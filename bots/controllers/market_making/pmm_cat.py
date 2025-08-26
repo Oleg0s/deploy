@@ -3,6 +3,7 @@ from typing import List
 
 from pydantic import Field
 
+from hummingbot.core.data_type.common import PriceType, TradeType
 from hummingbot.data_feed.candles_feed.data_types import CandlesConfig
 from hummingbot.strategy_v2.controllers.market_making_controller_base import (
     MarketMakingControllerBase,
@@ -17,6 +18,24 @@ class PMMCatConfig(MarketMakingControllerConfigBase):
     candles_config: List[CandlesConfig] = Field(default=[])
 
 
+class MarketPricePositionExecutorConfig(PositionExecutorConfig):
+    """
+    Custom PositionExecutorConfig that calculates take profit based on current market price
+    """
+
+    def get_take_profit_price(self, current_market_price: Decimal) -> Decimal:
+        """
+        Calculate take profit price based on current market price instead of entry price
+        """
+        if not self.triple_barrier_config or not self.triple_barrier_config.take_profit:
+            return None
+
+        if self.side == TradeType.BUY:
+            return current_market_price * (1 + self.triple_barrier_config.take_profit)
+        else:
+            return current_market_price * (1 - self.triple_barrier_config.take_profit)
+
+
 class PMMCatController(MarketMakingControllerBase):
     def __init__(self, config: PMMCatConfig, *args, **kwargs):
         super().__init__(config, *args, **kwargs)
@@ -24,7 +43,7 @@ class PMMCatController(MarketMakingControllerBase):
 
     def get_executor_config(self, level_id: str, price: Decimal, amount: Decimal):
         trade_type = self.get_trade_type_from_level_id(level_id)
-        return PositionExecutorConfig(
+        return MarketPricePositionExecutorConfig(
             timestamp=self.market_data_provider.time(),
             level_id=level_id,
             connector_name=self.config.connector_name,
