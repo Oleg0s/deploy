@@ -23,6 +23,8 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
     Custom PositionExecutorConfig that calculates take profit based on current market price
     """
 
+    price_at_start: Decimal = None
+
     def get_take_profit_price(self, current_market_price: Decimal) -> Decimal:
         """
         Calculate take profit price based on current market price instead of entry price
@@ -30,10 +32,13 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
         if not self.triple_barrier_config or not self.triple_barrier_config.take_profit:
             return None
 
+        if self.price_at_start is None:
+            self.price_at_start = current_market_price
+
         if self.side == TradeType.BUY:
-            return current_market_price * (1 + self.triple_barrier_config.take_profit)
+            return self.price_at_start * (1 + self.triple_barrier_config.take_profit)
         else:
-            return current_market_price * (1 - self.triple_barrier_config.take_profit)
+            return self.price_at_start * (1 - self.triple_barrier_config.take_profit)
 
 
 class PMMCatController(MarketMakingControllerBase):
