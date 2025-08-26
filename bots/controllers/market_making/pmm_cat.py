@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+# from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List
 import time
@@ -38,7 +38,10 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
         # if self.time_profit_from is None:
         #     self.time_profit_from = time.time()
 
+        self.logger().info(f"- calling get_take_profit_price: {current_market_price} | {self.time_profit_from}")
+
         if self.price_profit_from is None or self.time_profit_from + (self.time_delta * 60) < time.time():
+            self.logger().info(f"Updating profit reference price to {current_market_price}")
             self.time_profit_from = time.time()
             self.price_profit_from = current_market_price
 
