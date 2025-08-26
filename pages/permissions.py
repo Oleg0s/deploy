@@ -10,6 +10,7 @@ def public_pages():
         "Config Generator": [
             st.Page("frontend/pages/config/grid_strike/app.py", title="Grid Strike", icon="🎳", url_path="grid_strike"),
             st.Page("frontend/pages/config/pmm_simple/app.py", title="PMM Simple", icon="👨‍🏫", url_path="pmm_simple"),
+            st.Page("frontend/pages/config/pmm_cat/app.py", title="PMM Cat", icon="🐱", url_path="pmm_simple"),
             st.Page("frontend/pages/config/pmm_dynamic/app.py", title="PMM Dynamic", icon="👩‍🏫", url_path="pmm_dynamic"),
             st.Page("frontend/pages/config/dman_maker_v2/app.py", title="D-Man Maker V2", icon="🤖", url_path="dman_maker_v2"),
             st.Page("frontend/pages/config/bollinger_v1/app.py", title="Bollinger V1", icon="📈", url_path="bollinger_v1"),
