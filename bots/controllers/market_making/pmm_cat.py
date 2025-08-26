@@ -24,8 +24,6 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
     Custom PositionExecutorConfig that calculates take profit based on current market price
     """
 
-    time_delta = 5 #minutes
-
     def __init__(
             self,
             timestamp: float,
@@ -51,6 +49,7 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
         )
         self.price_profit_from: Decimal = None
         self.time_profit_from = datetime.now()
+        self.time_delta = 5
 
 
     def get_take_profit_price(self, current_market_price: Decimal) -> Decimal:
