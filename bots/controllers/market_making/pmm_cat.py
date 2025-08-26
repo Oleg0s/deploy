@@ -26,7 +26,7 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
     """
     price_profit_from: Decimal = None
     time_profit_from: float = None
-    time_delta: int = 10 # minutes
+    time_delta: int = 1 # minutes
 
     def get_take_profit_price(self, current_market_price: Decimal) -> Decimal:
         """
@@ -38,10 +38,8 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
         # if self.time_profit_from is None:
         #     self.time_profit_from = time.time()
 
-        self.logger().info(f"- calling get_take_profit_price: {current_market_price} | {self.time_profit_from}")
 
         if self.price_profit_from is None or self.time_profit_from + (self.time_delta * 60) < time.time():
-            self.logger().info(f"Updating profit reference price to {current_market_price}")
             self.time_profit_from = time.time()
             self.price_profit_from = current_market_price
 
