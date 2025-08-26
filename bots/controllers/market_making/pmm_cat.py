@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List
 
@@ -23,7 +24,9 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
     Custom PositionExecutorConfig that calculates take profit based on current market price
     """
 
-    price_at_start: Decimal = None
+    price_profit_from: Decimal = None
+    time_profit_from = datetime.now()
+    time_delta = 5 #minutes
 
     def get_take_profit_price(self, current_market_price: Decimal) -> Decimal:
         """
@@ -32,13 +35,14 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
         if not self.triple_barrier_config or not self.triple_barrier_config.take_profit:
             return None
 
-        if self.price_at_start is None:
-            self.price_at_start = current_market_price
+        if self.price_profit_from is None or self.time_profit_from + timedelta(minutes=self.time_delta) < datetime.now():
+            self.time_profit_from = datetime.now()
+            self.price_profit_from = current_market_price
 
         if self.side == TradeType.BUY:
-            return self.price_at_start * (1 + self.triple_barrier_config.take_profit)
+            return self.price_profit_from * (1 + self.triple_barrier_config.take_profit)
         else:
-            return self.price_at_start * (1 - self.triple_barrier_config.take_profit)
+            return self.price_profit_from * (1 - self.triple_barrier_config.take_profit)
 
 
 class PMMCatController(MarketMakingControllerBase):
