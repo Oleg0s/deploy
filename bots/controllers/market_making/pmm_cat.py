@@ -25,7 +25,7 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
     Custom PositionExecutorConfig that calculates take profit based on current market price
     """
     price_profit_from: Decimal = None
-    time_profit_from: float = time.time()
+    time_profit_from: float = None
     time_delta: int = 10 # minutes
 
     def get_take_profit_price(self, current_market_price: Decimal) -> Decimal:
@@ -34,6 +34,9 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
         """
         if not self.triple_barrier_config or not self.triple_barrier_config.take_profit:
             return None
+
+        # if self.time_profit_from is None:
+        #     self.time_profit_from = time.time()
 
         if self.price_profit_from is None or self.time_profit_from + (self.time_delta * 60) < time.time():
             self.time_profit_from = time.time()
