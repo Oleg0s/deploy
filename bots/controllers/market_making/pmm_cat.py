@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List
+import time
 
 from pydantic import Field
 
@@ -24,7 +25,7 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
     Custom PositionExecutorConfig that calculates take profit based on current market price
     """
     price_profit_from: Decimal = None
-    time_profit_from: datetime = datetime.now()
+    time_profit_from: float = time.time()
     time_delta: int = 10 # minutes
 
     def get_take_profit_price(self, current_market_price: Decimal) -> Decimal:
@@ -34,8 +35,8 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
         if not self.triple_barrier_config or not self.triple_barrier_config.take_profit:
             return None
 
-        if self.price_profit_from is None or self.time_profit_from + timedelta(minutes=self.time_delta) < datetime.now():
-            self.time_profit_from = datetime.now()
+        if self.price_profit_from is None or self.time_profit_from + (self.time_delta * 60) < time.time():
+            self.time_profit_from = time.time()
             self.price_profit_from = current_market_price
 
         if self.side == TradeType.BUY:
