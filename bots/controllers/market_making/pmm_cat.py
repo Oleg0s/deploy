@@ -23,34 +23,9 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
     """
     Custom PositionExecutorConfig that calculates take profit based on current market price
     """
-
-    def __init__(
-            self,
-            timestamp: float,
-            level_id: str,
-            connector_name: str,
-            trading_pair: str,
-            entry_price: Decimal,
-            amount: Decimal,
-            triple_barrier_config,
-            leverage: int,
-            side: TradeType,
-    ):
-        super().__init__(
-            timestamp=timestamp,
-            level_id=level_id,
-            connector_name=connector_name,
-            trading_pair=trading_pair,
-            entry_price=entry_price,
-            amount=amount,
-            triple_barrier_config=triple_barrier_config,
-            leverage=leverage,
-            side=side,
-        )
-        self.price_profit_from: Decimal = None
-        self.time_profit_from = datetime.now()
-        self.time_delta = 5
-
+    price_profit_from: Decimal = None
+    time_profit_from: datetime = datetime.now()
+    time_delta: int = 5 # minutes
 
     def get_take_profit_price(self, current_market_price: Decimal) -> Decimal:
         """
