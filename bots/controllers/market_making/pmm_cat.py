@@ -1,52 +1,19 @@
-# from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List
-import time
 
 from pydantic import Field
 
-from hummingbot.core.data_type.common import PriceType, TradeType
 from hummingbot.data_feed.candles_feed.data_types import CandlesConfig
 from hummingbot.strategy_v2.controllers.market_making_controller_base import (
     MarketMakingControllerBase,
     MarketMakingControllerConfigBase,
 )
-from hummingbot.strategy_v2.executors.position_executor.data_types import PositionExecutorConfig
-
+from hummingbot.strategy_v2.executors.cat_position_executor.data_types import CatPositionExecutorConfig
 
 class PMMCatConfig(MarketMakingControllerConfigBase):
     controller_name: str = "pmm_cat"
     # As this controller is a simple version of the PMM, we are not using the candles feed
     candles_config: List[CandlesConfig] = Field(default=[])
-
-
-class MarketPricePositionExecutorConfig(PositionExecutorConfig):
-    """
-    Custom PositionExecutorConfig that calculates take profit based on current market price
-    """
-    price_profit_from: Decimal = None
-    time_profit_from: float = None
-    time_delta: int = 10 # minutes
-
-    def get_take_profit_price(self, current_market_price: Decimal) -> Decimal:
-        """
-        Calculate take profit price based on current market price instead of entry price
-        """
-        if not self.triple_barrier_config or not self.triple_barrier_config.take_profit:
-            return None
-
-        # if self.time_profit_from is None:
-        #     self.time_profit_from = time.time()
-
-
-        if self.price_profit_from is None or self.time_profit_from + (self.time_delta * 60) < time.time():
-            self.time_profit_from = time.time()
-            self.price_profit_from = current_market_price
-
-        if self.side == TradeType.BUY:
-            return self.price_profit_from * (1 + self.triple_barrier_config.take_profit)
-        else:
-            return self.price_profit_from * (1 - self.triple_barrier_config.take_profit)
 
 
 class PMMCatController(MarketMakingControllerBase):
@@ -56,7 +23,7 @@ class PMMCatController(MarketMakingControllerBase):
 
     def get_executor_config(self, level_id: str, price: Decimal, amount: Decimal):
         trade_type = self.get_trade_type_from_level_id(level_id)
-        return MarketPricePositionExecutorConfig(
+        return CatPositionExecutorConfig(
             timestamp=self.market_data_provider.time(),
             level_id=level_id,
             connector_name=self.config.connector_name,
@@ -67,3 +34,5 @@ class PMMCatController(MarketMakingControllerBase):
             leverage=self.config.leverage,
             side=trade_type,
         )
+
+
