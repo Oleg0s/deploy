@@ -5,7 +5,7 @@ from frontend.components.config_loader import get_default_config_loader
 from frontend.components.save_config import render_save_config
 
 # Import submodules
-from frontend.pages.config.pmm_simple.user_inputs import user_inputs
+from frontend.pages.config.pmm_cat.user_inputs import user_inputs
 from frontend.st_utils import get_backend_api_client, initialize_st_page
 from frontend.visualization.backtesting import create_backtesting_figure
 from frontend.visualization.backtesting_metrics import render_accuracy_metrics, render_backtesting_metrics, render_close_types
