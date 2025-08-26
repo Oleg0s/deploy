@@ -25,7 +25,7 @@ class MarketPricePositionExecutorConfig(PositionExecutorConfig):
     """
     price_profit_from: Decimal = None
     time_profit_from: datetime = datetime.now()
-    time_delta: int = 5 # minutes
+    time_delta: int = 10 # minutes
 
     def get_take_profit_price(self, current_market_price: Decimal) -> Decimal:
         """
