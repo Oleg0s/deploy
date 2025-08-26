@@ -12,12 +12,12 @@ from frontend.visualization.backtesting_metrics import render_accuracy_metrics, 
 from frontend.visualization.executors_distribution import create_executors_distribution_traces
 
 # Initialize the Streamlit page
-initialize_st_page(title="PMM Simple", icon="👨‍🏫")
+initialize_st_page(title="PMM Cat", icon="🐱")
 backend_api_client = get_backend_api_client()
 
 # Page content
-st.text("This tool will let you create a config for PMM Simple, backtest and upload it to the Backend API.")
-get_default_config_loader("pmm_simple")
+st.text("This tool will let you create a config for PMM Cat.")
+get_default_config_loader("pmm_cat")
 
 inputs = user_inputs()
 
