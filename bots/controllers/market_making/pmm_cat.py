@@ -33,8 +33,8 @@ class PMMCatController(MarketMakingControllerBase):
             # triple_barrier_config=self.config.triple_barrier_config,
             leverage=self.config.leverage,
             side=trade_type,
-            spread = Decimal("0.01"),
-            reload_time = 1
+            spread = Decimal("0.0023"),
+            reload_time = 5
         )
 
 
