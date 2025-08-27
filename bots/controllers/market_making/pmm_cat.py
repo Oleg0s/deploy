@@ -25,14 +25,16 @@ class PMMCatController(MarketMakingControllerBase):
         trade_type = self.get_trade_type_from_level_id(level_id)
         return CatPositionExecutorConfig(
             timestamp=self.market_data_provider.time(),
-            level_id=level_id,
+            # level_id=level_id,
             connector_name=self.config.connector_name,
             trading_pair=self.config.trading_pair,
-            entry_price=price,
+            # entry_price=price,
             amount=amount,
-            triple_barrier_config=self.config.triple_barrier_config,
+            # triple_barrier_config=self.config.triple_barrier_config,
             leverage=self.config.leverage,
             side=trade_type,
+            spread = Decimal("0.01"),
+            reload_time = 1
         )
 
 
