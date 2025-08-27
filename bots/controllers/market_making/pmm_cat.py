@@ -25,7 +25,7 @@ class PMMCatController(MarketMakingControllerBase):
         trade_type = self.get_trade_type_from_level_id(level_id)
         return CatPositionExecutorConfig(
             timestamp=self.market_data_provider.time(),
-            # level_id=level_id,
+            level_id=level_id,
             connector_name=self.config.connector_name,
             trading_pair=self.config.trading_pair,
             # entry_price=price,
