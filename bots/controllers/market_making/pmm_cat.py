@@ -21,8 +21,21 @@ class PMMCatController(MarketMakingControllerBase):
         super().__init__(config, *args, **kwargs)
         self.config = config
 
+    def get_level_spread(self, level_id: str) -> Decimal:
+        """
+        Get the spread for a given level id.
+        """
+        level = self.get_level_from_level_id(level_id)
+        trade_type = self.get_trade_type_from_level_id(level_id)
+        spreads, _ = self.config.get_spreads_and_amounts_in_quote(trade_type)
+        # spread = Decimal(spreads[int(level)]) * Decimal(self.processed_data["spread_multiplier"])
+        spread = Decimal(spreads[int(level)])
+        return spread
+
+
     def get_executor_config(self, level_id: str, price: Decimal, amount: Decimal):
         trade_type = self.get_trade_type_from_level_id(level_id)
+        spread = self.get_level_spread(level_id)
         return CatPositionExecutorConfig(
             timestamp=self.market_data_provider.time(),
             level_id=level_id,
@@ -33,8 +46,8 @@ class PMMCatController(MarketMakingControllerBase):
             # triple_barrier_config=self.config.triple_barrier_config,
             leverage=self.config.leverage,
             side=trade_type,
-            spread = Decimal("0.0023"),
-            reload_time = 5
+            spread = spread,
+            reload_time = self.config.executor_refresh_time,
         )
 
 
