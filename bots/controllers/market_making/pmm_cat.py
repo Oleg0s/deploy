@@ -48,6 +48,7 @@ class PMMCatController(MarketMakingControllerBase):
             side=trade_type,
             spread = spread,
             reload_time = self.config.executor_refresh_time,
+            profit_time_limit = self.config.triple_barrier_config.time_limit,
         )
 
 
