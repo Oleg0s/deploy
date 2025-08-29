@@ -2,14 +2,15 @@ from decimal import Decimal
 from typing import List, Optional, Tuple, Union
 from pydantic import Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
-from hummingbot.core.data_type.common import MarketDict, OrderType, PositionMode, PriceType, TradeType
+from hummingbot.core.data_type.common import MarketDict, OrderType, PositionMode, PriceType, TradeType, PositionAction
 from hummingbot.data_feed.candles_feed.data_types import CandlesConfig
-from hummingbot.strategy_v2.controllers.market_making_controller_base import (
-    MarketMakingControllerBase,
-    MarketMakingControllerConfigBase,
-)
 from hummingbot.strategy_v2.executors.position_executor.data_types import PositionExecutorConfig
+from hummingbot.strategy_v2.executors.cat_position_executor.data_types import CatPositionExecutorConfig
+from hummingbot.strategy_v2.executors.order_executor.data_types import OrderExecutorConfig, ExecutionStrategy
 from hummingbot.strategy_v2.controllers.controller_base import ControllerBase, ControllerConfigBase
+from hummingbot.strategy_v2.executors.data_types import ConnectorPair
+from hummingbot.strategy_v2.models.executor_actions import CreateExecutorAction, ExecutorAction, StopExecutorAction
+from hummingbot.strategy_v2.models.executors import CloseType
 
 
 class SpreadMakerConfig(ControllerConfigBase):
@@ -123,6 +124,165 @@ class SpreadMakerConfig(ControllerConfigBase):
 
     def update_markets(self, markets: MarketDict) -> MarketDict:
         return markets.add_or_update(self.connector_name, self.trading_pair)
+
+class SpreadMakerController(ControllerBase):
+    def __init__(self, config: SpreadMakerConfig, *args, **kwargs):
+        super().__init__(config, *args, **kwargs)
+        self.config = config
+        self.market_data_provider.initialize_rate_sources([ConnectorPair(
+            connector_name=config.connector_name, trading_pair=config.trading_pair)])
+
+    def get_executor_config(self, level_id: str, price: Decimal, amount: Decimal):
+        trade_type = self.get_trade_type_from_level_id(level_id)
+        spread = self.get_level_spread(level_id)
+        return CatPositionExecutorConfig(
+            timestamp=self.market_data_provider.time(),
+            level_id=level_id,
+            connector_name=self.config.connector_name,
+            trading_pair=self.config.trading_pair,
+            amount=amount,
+            leverage=self.config.leverage,
+            side=trade_type,
+            spread = spread,
+            reload_time = self.config.executor_refresh_time,
+            profit_time_limit = self.config.profit_waiting_time,
+        )
+
+    def get_level_spread(self, level_id: str) -> Decimal:
+        """
+        Get the spread for a given level id.
+        """
+        level = self.get_level_from_level_id(level_id)
+        trade_type = self.get_trade_type_from_level_id(level_id)
+        spreads, _ = self.config.get_spreads_and_amounts_in_quote(trade_type)
+        # spread = Decimal(spreads[int(level)]) * Decimal(self.processed_data["spread_multiplier"])
+        spread = Decimal(spreads[int(level)])
+        return spread
+
+    # def get_executor_config(self, level_id: str, price: Decimal, amount: Decimal):
+    #     trade_type = self.get_trade_type_from_level_id(level_id)
+    #     return OrderExecutorConfig(
+    #         trading_pair = self.config.trading_pair,
+    #         connector_name = self.config.connector_name,
+    #         side = trade_type,
+    #         amount = amount,
+    #         position_action = PositionAction.OPEN,
+    #         price = price,
+    #         execution_strategy = ExecutionStrategy.LIMIT_MAKER,
+    #         leverage = self.config.leverage,
+    #         level_id = level_id
+    #     )
+
+    def determine_executor_actions(self) -> List[ExecutorAction]:
+        """
+        Determine actions based on the provided executor handler report.
+        """
+        actions = []
+        actions.extend(self.create_actions_proposal())
+        actions.extend(self.stop_actions_proposal())
+        return actions
+
+    def create_actions_proposal(self) -> List[ExecutorAction]:
+        """
+        Create actions proposal based on the current state of the controller.
+        """
+        create_actions = []
+
+        # Create normal market making levels
+        levels_to_execute = self.get_levels_to_execute()
+        for level_id in levels_to_execute:
+            price, amount = self.get_price_and_amount(level_id)
+            executor_config = self.get_executor_config(level_id, price, amount)
+            if executor_config is not None:
+                create_actions.append(CreateExecutorAction(
+                    controller_id=self.config.id,
+                    executor_config=executor_config
+                ))
+        return create_actions
+
+    def get_levels_to_execute(self) -> List[str]:
+        working_levels = self.filter_executors(
+            executors=self.executors_info,
+            filter_func=lambda x: x.is_active
+        )
+        working_levels_ids = [executor.custom_info["level_id"] for executor in working_levels]
+        return self.get_not_active_levels_ids(working_levels_ids)
+
+    def stop_actions_proposal(self) -> List[ExecutorAction]:
+        """
+        Create a list of actions to stop the executors based on order refresh and early stop conditions.
+        """
+        stop_actions = []
+        stop_actions.extend(self.executors_to_early_stop())
+        return stop_actions
+
+    def executors_to_early_stop(self) -> List[ExecutorAction]:
+        """
+        Get the executors to early stop based on the current state of market data. This method can be overridden to
+        implement custom behavior.
+        """
+        return []
+
+    async def update_processed_data(self):
+        """
+        Update the processed data for the controller.
+        """
+        reference_price = self.market_data_provider.get_price_by_type(self.config.connector_name,
+                                                                      self.config.trading_pair, PriceType.MidPrice)
+        self.processed_data = {"reference_price": Decimal(reference_price), "spread_multiplier": Decimal("1")}
+
+    def get_price_and_amount(self, level_id: str) -> Tuple[Decimal, Decimal]:
+        """
+        Get the spread and amount in quote for a given level id.
+        """
+        level = self.get_level_from_level_id(level_id)
+        trade_type = self.get_trade_type_from_level_id(level_id)
+        spreads, amounts_quote = self.config.get_spreads_and_amounts_in_quote(trade_type)
+        reference_price = Decimal(self.processed_data["reference_price"])
+        spread_in_pct = Decimal(spreads[int(level)]) * Decimal(self.processed_data["spread_multiplier"])
+        side_multiplier = Decimal("-1") if trade_type == TradeType.BUY else Decimal("1")
+        order_price = reference_price * (1 + side_multiplier * spread_in_pct)
+        return order_price, Decimal(amounts_quote[int(level)]) / order_price
+
+    def get_level_id_from_side(self, trade_type: TradeType, level: int) -> str:
+        """
+        Get the level id based on the trade type and the level.
+        """
+        return f"{trade_type.name.lower()}_{level}"
+
+    def get_trade_type_from_level_id(self, level_id: str) -> TradeType:
+        return TradeType.BUY if level_id.startswith("buy") else TradeType.SELL
+
+    def get_level_from_level_id(self, level_id: str) -> int:
+        return int(level_id.split('_')[1])
+
+    def get_not_active_levels_ids(self, active_levels_ids: List[str]) -> List[str]:
+        """
+        Get the levels to execute based on the current state of the controller.
+        """
+        buy_ids_missing = [self.get_level_id_from_side(TradeType.BUY, level) for level in range(len(self.config.buy_spreads))
+                           if self.get_level_id_from_side(TradeType.BUY, level) not in active_levels_ids]
+        sell_ids_missing = [self.get_level_id_from_side(TradeType.SELL, level) for level in range(len(self.config.sell_spreads))
+                            if self.get_level_id_from_side(TradeType.SELL, level) not in active_levels_ids]
+        return buy_ids_missing + sell_ids_missing
+
+    def get_current_base_position(self) -> Decimal:
+        """
+        Get current base asset position from positions held.
+        """
+        total_base_amount = Decimal("0")
+
+        for position in self.positions_held:
+            if (position.connector_name == self.config.connector_name and
+                    position.trading_pair == self.config.trading_pair):
+                # Calculate net base position
+                if position.side == TradeType.BUY:
+                    total_base_amount += position.amount
+                else:  # SELL position
+                    total_base_amount -= position.amount
+
+        return total_base_amount
+
 
 
 
