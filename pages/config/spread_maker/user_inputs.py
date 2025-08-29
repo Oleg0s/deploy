@@ -6,7 +6,7 @@ from frontend.components.config_loader import get_controller_config
 
 def get_spread_market_making_inputs(custom_candles=False, controller_name: str = None):
     with st.expander("General Settings", expanded=True):
-        c1, c2, c3, c4, c5, c6 = st.columns(7)
+        c1, c2, c3, c4, c5, c6 = st.columns(6)
         if controller_name:
             default_config = get_controller_config(controller_name)
         else:
